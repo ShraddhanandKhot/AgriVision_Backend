@@ -16,15 +16,16 @@ HF_MODEL_URL = "https://shraddhanandkk-agrivision-efficient-b3-model.hf.space/ru
 def classify_leaf(leaf):
     buffered = io.BytesIO()
     leaf.save(buffered, format="JPEG")
+    img_base64 = base64.b64encode(buffered.getvalue()).decode()
 
-    files = {
-        "data": buffered.getvalue()
+    payload = {
+        "data": [img_base64]
     }
 
-    response = requests.post(HF_MODEL_URL, files=files)
+    response = requests.post(HF_MODEL_URL, json=payload)
     result = response.json()
 
-    return result["prediction"]
+    return result["data"][0]["prediction"]
 
 
 # ---------------------------------------
