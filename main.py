@@ -3,40 +3,33 @@ from PIL import Image
 import io
 import base64
 import requests
-import torch
-import torch.nn as nn
-from torchvision import models, transforms
 import numpy as np
 
 app = FastAPI()
 
-# ---------------------------
-# Load Disease Classification Model
-# ---------------------------
+# ---------------------------------------
+# HuggingFace Model API URL
+# ---------------------------------------
 
-disease_model = models.efficientnet_b3(pretrained=False)
+HF_MODEL_URL = "https://shraddhanandkk-agrivision-efficient-b3-model.hf.space/run/predict"
 
-disease_model.classifier[1] = nn.Linear(
-    disease_model.classifier[1].in_features,
-    3
-)
+def classify_leaf(leaf):
+    buffered = io.BytesIO()
+    leaf.save(buffered, format="JPEG")
 
-disease_model.load_state_dict(
-    torch.load("corn_disease_model_final.pth", map_location=torch.device("cpu"))
-)
+    files = {
+        "data": buffered.getvalue()
+    }
 
-disease_model.eval()
+    response = requests.post(HF_MODEL_URL, files=files)
+    result = response.json()
 
-classes = ["Blight", "Healthy", "Rust"]
+    return result["prediction"]
 
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor()
-])
 
-# ---------------------------
+# ---------------------------------------
 # Disease Progression Function
-# ---------------------------
+# ---------------------------------------
 
 def disease_progression(S0, r=0.3, days=7):
     if S0 == 0:
@@ -49,9 +42,9 @@ def disease_progression(S0, r=0.3, days=7):
     return future
 
 
-# ---------------------------
+# ---------------------------------------
 # Predict Endpoint
-# ---------------------------
+# ---------------------------------------
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
@@ -64,7 +57,6 @@ async def predict(file: UploadFile = File(...)):
     img.save(buffered, format="JPEG")
     img_base64 = base64.b64encode(buffered.getvalue()).decode()
 
-    # 🔴 Replace with your actual API key
     url = "https://serverless.roboflow.com/object-detection-3cadt/workflows/find-leaves"
 
     payload = {
@@ -99,12 +91,8 @@ async def predict(file: UploadFile = File(...)):
 
         leaf = img.crop((x1, y1, x2, y2))
 
-        leaf_tensor = transform(leaf).unsqueeze(0)
-
-        outputs = disease_model(leaf_tensor)
-        _, predicted = torch.max(outputs, 1)
-
-        disease = classes[predicted.item()]
+        # 🔥 Call HuggingFace model instead of local torch
+        disease = classify_leaf(leaf)
 
         if disease == "Healthy":
             healthy += 1
