@@ -77,6 +77,21 @@ async def predict(file: UploadFile = File(...)):
     result = response.json()
 
     preds = result['outputs'][0]['predictions']['predictions']
+    if len(preds) == 0:
+        diseases = classify_leaf(img)
+
+        return {
+            "Total Leaves": 1,
+            "Healthy": 1 if diseases == "Healthy" else 0,
+            "Rust": 1 if diseases == "Rust" else 0,
+            "Blight": 1 if diseases == "Blight" else 0,
+            "Severity %": 0 if diseases == "Healthy" else 100,
+            "Future Prediction (7 days)": disease_progression(
+            0 if diseases == "Healthy" else 100
+        )
+    }
+
+    
 
     healthy = 0
     rust = 0
