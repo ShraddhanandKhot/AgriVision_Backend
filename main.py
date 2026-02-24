@@ -11,21 +11,24 @@ app = FastAPI()
 # HuggingFace Model API URL
 # ---------------------------------------
 
-HF_MODEL_URL = "https://shraddhanandkk-agrivision-efficient-b3-model.hf.space/run/predict"
+# HF_MODEL_URL = "https://shraddhanandkk-agrivision-efficient-b3-model.hf.space/run/predict"
 
 def classify_leaf(leaf):
     buffered = io.BytesIO()
     leaf.save(buffered, format="JPEG")
-    img_base64 = base64.b64encode(buffered.getvalue()).decode()
 
-    payload = {
-        "data": [img_base64]
+    files = {
+        "file": ("leaf.jpg", buffered.getvalue(), "image/jpeg")
     }
 
-    response = requests.post(HF_MODEL_URL, json=payload)
+    response = requests.post(
+        "https://shraddhanandkk-agrivision-model-b3.hf.space/predict",
+        files=files
+    )
+
     result = response.json()
 
-    return result["data"][0]["prediction"]
+    return result["prediction"]
 
 
 # ---------------------------------------
